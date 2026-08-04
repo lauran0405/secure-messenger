@@ -1,0 +1,5 @@
+id,message_type,expected_result
+1,TEXT,received
+2,IMAGE,received
+3,AUDIO,received
+4,FILE,received

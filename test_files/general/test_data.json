@@ -1,0 +1,9 @@
+{
+  "project": "secure messaging application",
+  "purpose": "general JSON file transmission test",
+  "encryption_modes": [
+    "DES-56",
+    "AES-128"
+  ],
+  "expected_message_type": "FILE"
+}

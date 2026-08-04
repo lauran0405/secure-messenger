@@ -1,0 +1,23 @@
+# python virtual environment
+.venv/
+venv/
+
+# python cache files
+__pycache__/
+*.pyc
+
+# intellij and editor files
+.idea/
+.vscode/
+
+# mac system files
+.DS_Store
+
+# received test files
+client_received_files/
+server_received_files/
+received_files/
+
+# temporary files
+*.tmp
+*.log

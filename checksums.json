@@ -1,0 +1,50 @@
+{
+  "test_files/audio/test_audio.wav": {
+    "size_bytes": 176444,
+    "sha256": "6eeac52dee136c0aad6fb24b408b60e9d515c5a52ceea6c63737c14f68bfbcd6"
+  },
+  "test_files/edge_cases/test_empty.txt": {
+    "size_bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "test_files/edge_cases/test_no_extension": {
+    "size_bytes": 42,
+    "sha256": "00849a2670921ddb8e53f87d375d6ed26a9322c379f70601244a46260a6d5c1e"
+  },
+  "test_files/edge_cases/test_special name @1.txt": {
+    "size_bytes": 55,
+    "sha256": "67d5365088fccb551bbe368be65e7ef5e8ad1d40f30e78ccce6c0981fdef2d50"
+  },
+  "test_files/general/test_binary.bin": {
+    "size_bytes": 4096,
+    "sha256": "c8f5d0341d54d951a71b136e6e2afcb14d11ed8489a7ae126a8fee0df6ecf193"
+  },
+  "test_files/general/test_data.json": {
+    "size_bytes": 191,
+    "sha256": "63d85d1b5b51ea365f37dda6538d76897e2a8ac8576abfd14a5377b51e39c504"
+  },
+  "test_files/general/test_table.csv": {
+    "size_bytes": 103,
+    "sha256": "9e2fae06135b2be1c72db3bb9953d7f00e9af97704c7edaa3f3eee1d308948cc"
+  },
+  "test_files/images/test_image.png": {
+    "size_bytes": 4708,
+    "sha256": "25450c756a6c3c0b0e30e7df9171b8876fce729b8e020cc81ae2ebe8ab0ee1fa"
+  },
+  "test_files/images/test_image_small.png": {
+    "size_bytes": 135,
+    "sha256": "8e08564ca4c7b3151cc7e95779d4ad5348381eee7f49b0ed53ca536880fe577f"
+  },
+  "test_files/text/test_text_long.txt": {
+    "size_bytes": 24000,
+    "sha256": "4efdbcaa7d56db16f9dc476e30f9adaf1e4b3792c18f51a2c7c944c11a76dab2"
+  },
+  "test_files/text/test_text_short.txt": {
+    "size_bytes": 53,
+    "sha256": "2e9bde27ae37f37f943ba0c100ed541e12507d3ae5366467da656af863c857fc"
+  },
+  "test_files/text/test_text_unicode.txt": {
+    "size_bytes": 62,
+    "sha256": "6a53ccd15789bc2be0af29b0bfc3f10c78b1d377a76a0f426f9a21fb12131157"
+  }
+}

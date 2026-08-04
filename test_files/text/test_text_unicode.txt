@@ -1,0 +1,1 @@
+Unicode test: café, résumé, 你好, مرحبا, 🔐, 🚀

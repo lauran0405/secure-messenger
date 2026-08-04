@@ -1,0 +1,1 @@
+Hello Bob! This is a short encrypted text-file test.
