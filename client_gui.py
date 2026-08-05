@@ -256,7 +256,7 @@ class ClientGUI(SecureMessengerWindow):
         try:
             # encrypts json message and adds hmac tag
             protected = protect_message(message_json, self.password_var.get(), self.selected_mode(), self.send_key_version)
-            
+
             # separates the ciphertext for display
             ciphertext = protected.rsplit("|", 2)[1]
 
@@ -266,7 +266,7 @@ class ClientGUI(SecureMessengerWindow):
                 send_data(self.client_socket, protected.encode("utf-8"))
 
             # displays sent message
-            self.append_conversation("sent", "You", message_type, plaintext
+            self.append_conversation("sent", "Client", message_type, plaintext
 
             # selects value shown in conversation panel
             if message_type == "TEXT"
