@@ -34,6 +34,15 @@ class ClientGUI(SecureMessengerWindow):
         # prevents multiple threads from sending at the same time
         self.send_lock = threading.Lock()
 
+        # rotates the outgoing key after five messages
+        self.key_rotation_interval = 5
+
+        # stores the current outgoing key version
+        self.send_key_version = 0
+
+        # counts messages sent with the current key
+        self.messages_with_current_key = 0
+
         # creates client specific gui section
         self._build_connection_panel()
         self._build_buttons()
@@ -165,6 +174,10 @@ class ClientGUI(SecureMessengerWindow):
             # stored connected socket
             self.client_socket = sock
 
+            # begins each new connection with key version sero
+            self.send_key_version = 0
+            self.messages_with_current_key = 0
+
             # records that client is connected
             self.connected = True
 
@@ -180,7 +193,7 @@ class ClientGUI(SecureMessengerWindow):
         except OSError as error:
 
             # sends connection error to the gui thread
-            self.root.after(0, lambda: self._connect_failed(str(error)))
+            self.root.after(0, lambda e=str(error): self._connect_failed(e))
 
     # handles a failed connection
     def _connect_failed(self, error: str) -> None:
@@ -242,10 +255,10 @@ class ClientGUI(SecureMessengerWindow):
 
         try:
             # encrypts json message and adds hmac tag
-            protected = protect_message(message_json, self.password_var.get(), self.selected_mode())
-
+            protected = protect_message(message_json, self.password_var.get(), self.selected_mode(), self.send_key_version)
+            
             # separates the ciphertext for display
-            ciphertext = protected.rsplit("|", 1)[0]
+            ciphertext = protected.rsplit("|", 2)[1]
 
             # prevents overlapping socket sends
             with self.send_lock:
@@ -264,7 +277,10 @@ class ClientGUI(SecureMessengerWindow):
             self.update_details(message_type, filename, plaintext, self._ciphertext_preview(ciphertext), "Generated")
 
             # records the successful transmission
-            self.log("success", f"{message_type.lower()} encrypted and sent")
+            self.log("success", f"{message_type.lower()} encrypted and sent with key version {self.send_key_version}")
+
+            # records one use and rotates when necessary
+            self._record_key_use()
 
         except (OSError, ConnectionError, ValueError) as error:
             self.log("error", str(error))
@@ -280,13 +296,13 @@ class ClientGUI(SecureMessengerWindow):
                 protected = receive_data(self.client_socket).decode("utf-8")
 
                 # verifies hmac and decrypts message
-                message_json, ciphertext = open_message(protected, self.password_var.get(), self.selected_mode())
+                message_json, ciphertext, key_version = open_message(protected, self.password_var.get(), self.selected_mode())
 
                 # converts json into a dictionary
                 message = parse_message(message_json)
 
                 # displays message one gui thread
-                self.root.after(0, lambda m=message, c=ciphertext: self._display_received(m, c))
+                self.root.after(0, lambda m =message, c=ciphertext, v=key_version: self._display_received(m, c, v))
 
             except (OSError, ConnectionError) as error:
                 # handles a closed or interrupted connection
@@ -299,7 +315,7 @@ class ClientGUI(SecureMessengerWindow):
                 self.root.after(0, lambda e=str(error): self.log("error", f"security error: {e}"))
 
     # displays a verified message and saves received files
-    def _display_received(self, message: dict, ciphertext: str) -> None:
+    def _display_received(self, message: dict, ciphertext: str, key_version: int) -> None:
 
         # obtains the message type
         message_type = message["type"]
@@ -339,12 +355,33 @@ class ClientGUI(SecureMessengerWindow):
         # displays verified message details
         self.update_details(message_type, filename, plaintext, self._ciphertext_preview(ciphertext), "Verified")
 
+        # displays the authenticated version used by sender
+        self.log("info", f"received message used key version {key_version}")
+
         # records successful hmac verification
         self.log("success", "hmac verified")
 
         # closes when the server send quit or exit
         if message_type == "TEXT" and message["data"].lower() in ("quit", "exit"):
             self.disconnect()
+
+    # records outgoing key use and rotates the key periodically
+    def _record_key_use(self) -> None:
+        # counts the message that was just sent
+        self.messages_with_current_key += 1
+
+        # keeps using the current version until five messages
+        if (self.messages_with_current_key < self.key_rotation_interval):
+            return
+
+        # advances to a newly derived key version
+        self.send_key_version += 1
+
+        # restarts the counter for the new key
+        self.messages_with_current_key = 0
+
+        # records the rotation in the activity log
+        self.log("info", f"key rotated to version {self.send_key_version}")
 
     # handles a server disconnect or other socket error
     def _connection_lost(self, error: str) -> None:

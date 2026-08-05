@@ -13,32 +13,51 @@ from Crypto.Util.Padding import pad, unpad
 
 SALT = b"cs5173_shared_salt"
 
-def derive_hmac_key(password: str) -> bytes:
-    # derives separate 32 byte auth. key
+# converts a key version into bytes for pbkdf2 salt seper ation
+def vers_bytes(key_version: int) -> bytes:
+    # prevents negative key version values
+    if key_version < 0:
+        raise ValueError("key version must be >= 0")
+
+    # stores version as a fixed four-byte value
+    return key_version.to_bytes(4, "big")
+
+# derives a separate hmac key for one key version
+def derive_hmac_key(password: str, key_version: int = 0) -> bytes:
+    # creates a version-specific salt for hmac
+    versioned_salt = (SALT + b"_hmac_" + vers_bytes(key_version))
+
+    # derives the hmac key using pbkdf2
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=SALT + b"_hmac",
+        salt=versioned_salt,
         iterations=100_000,
     )
-    return kdf.derive(password.encode("utf-8"))
+
+    return kdf.derive(
+        password.encode("utf-8")
+    )
 
 # des 56-bit encryption
 
-def derive_des_key(password: str) -> bytes:
+def derive_des_key(password: str, key_version: int = 0) -> bytes:
+    # creates version specific salt for des
+    versioned_salt = (SALT + b"_des_" + vers_bytes(key_version))
+
     # derives an 8-byte des key from the shared password
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=8,
-        salt=SALT,
+        salt=versioned_salt,
         iterations=100_000,
     )
 
     return kdf.derive(password.encode("utf-8"))
 
-def encrypt_des_message(message: str, password: str) -> str:
+def encrypt_des_message(message: str, password: str, key_version: int = 0) -> str:
     # derives the des key from the shared password
-    key = derive_des_key(password)
+    key = derive_des_key(password, key_version)
 
     # creates a random 8 byte initialization vector
     iv = os.urandom(8)
@@ -57,9 +76,9 @@ def encrypt_des_message(message: str, password: str) -> str:
 
     return base64.b64encode(encrypted_data).decode("utf-8")
 
-def decrypt_des_message(encrypted_message: str, password: str) -> str:
+def decrypt_des_message(encrypted_message: str, password: str, key_version: int = 0) -> str:
     # derives the same des key from the shared password
-    key = derive_des_key(password)
+    key = derive_des_key(password, key_version)
 
     # converts base64 ciphertext back into bytes
     encrypted_data = base64.b64decode(encrypted_message)
@@ -81,21 +100,23 @@ def decrypt_des_message(encrypted_message: str, password: str) -> str:
 
 # aes-128 encryption
 
-def derive_aes_key(password: str) -> bytes:
+def derive_aes_key(password: str, key_version: int = 0) -> bytes:
+    # creates a version specific salt for aes
+    versioned_salt = (SALT + b"_aes_" + vers_bytes(key_version))
     # derive a 128-bit AES key from the shared password
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=16,
-        salt=SALT,
+        salt=versioned_salt,
         iterations=100_000
     )
 
     return kdf.derive(password.encode("utf-8"))
 
 
-def encrypt_aes_message(message: str, password: str) -> str:
+def encrypt_aes_message(message: str, password: str, key_version: int = 0) -> str:
     # derives the aes key from the shared password
-    key = derive_aes_key(password)
+    key = derive_aes_key(password, key_version)
 
     # creates random 16-byte initialization vector
     iv = os.urandom(16)
@@ -119,9 +140,9 @@ def encrypt_aes_message(message: str, password: str) -> str:
     return base64.b64encode(encrypted_data).decode("utf-8")
 
 
-def decrypt_aes_message(encrypted_message: str, password: str) -> str:
+def decrypt_aes_message(encrypted_message: str, password: str, key_version: int = 0) -> str:
     # derives same aes key from shared password
-    key = derive_aes_key(password)
+    key = derive_aes_key(password, key_version)
 
     # converts base64 ciphertext back into bytes
     encrypted_data = base64.b64decode(encrypted_message)
@@ -147,31 +168,31 @@ def decrypt_aes_message(encrypted_message: str, password: str) -> str:
 
 # mode selection func.
 
-def encrypt_by_mode(message: str, password: str, mode: str) -> str:
-    # selects encryption method chosed by user
+def encrypt_by_mode(message: str, password: str, mode: str, key_version: int = 0) -> str:
+    # selects encryption method chosen by user
     if mode == "1":
-        return encrypt_des_message(message, password)
+        return encrypt_des_message(message, password, key_version)
 
     if mode == "2":
-        return encrypt_aes_message(message, password)
+        return encrypt_aes_message(message, password, key_version)
 
     raise ValueError("invalid mode")
 
-def decrypt_by_mode(encrypted_message: str, password: str, mode: str) -> str:
+def decrypt_by_mode(encrypted_message: str, password: str, mode: str, key_version: int = 0) -> str:
     # selects decryption method chosen by user
     if mode == "1":
-        return decrypt_des_message(encrypted_message, password)
+        return decrypt_des_message(encrypted_message, password, key_version)
 
     if mode == "2":
-        return decrypt_aes_message(encrypted_message, password)
+        return decrypt_aes_message(encrypted_message, password, key_version)
 
     raise ValueError("invalid mode")
 
 # functions for creating and varifying the HMAC
 
-def create_hmac(encrypted_message: str, password: str) -> str:
+def create_hmac(encrypted_message: str, password: str, key_version: int = 0) -> str:
     # derives a separate key for message authentication
-    hmac_key = derive_hmac_key(password)
+    hmac_key = derive_hmac_key(password, key_version)
 
     # creates an hmac-sha256 tag for the ciphertext
     tag = hmac.new(
@@ -186,52 +207,54 @@ def create_hmac(encrypted_message: str, password: str) -> str:
 
 # package ciphertext and hmac together
 
-def verify_hmac(encrypted_message: str, received_tag: str, password: str) -> bool:
+def verify_hmac(encrypted_message: str, received_tag: str, password: str, key_version: int = 0) -> bool:
 
     # recalculates the expected authentication tag
-    expected_tag = create_hmac(encrypted_message, password)
+    expected_tag = create_hmac(encrypted_message, password, key_version)
 
     # securely compares the received and expected tags
     return hmac.compare_digest(expected_tag, received_tag)
 
-def protect_message(
-        message: str,
-        password: str,
-        mode: str,
-) -> str:
+def protect_message(message: str, password: str, mode: str, key_version: int = 0) -> str:
+
     # encrypts the plaintext using the selected mode
-    encrypted_message = encrypt_by_mode(message, password, mode)
+    encrypted_message = encrypt_by_mode(message, password, mode, key_version)
+
+    # includes version in authenticated data
+    authenticated_data = (f"{key_version}|{encrypted_message}")
 
     # creates an authentication tag for the ciphertext
-    authentication_tag = create_hmac(encrypted_message, password)
+    authentication_tag = create_hmac(authenticated_data, password, key_version)
 
     # combines the ciphertext and hmac tag for transmission
-    return encrypted_message + "|" + authentication_tag
+    return (f"{key_version}|{encrypted_message}|{authentication_tag}")
 
 
-def open_message(
-        protected_message: str,
-        password: str,
-        mode: str,
-) -> tuple[str, str]:
+def open_message(protected_message: str, password: str, mode: str) -> tuple[str, str]:
     # separates the ciphertext from the authentication tag
     try:
-        encrypted_message, received_tag = protected_message.rsplit("|", 1)
-    except ValueError as error:
+        version_text, encrypted_message, received_tag = protected_message.rsplit("|", 2)
+
+        key_version = int(version_text)
+
+    except (ValueError, TypeError) as error:
         raise ValueError("invalid message format") from error
 
+    # rejects invalid key versions
+    if key_version < 0:
+        raise ValueError("invalid key version")
+
+    # recreates the authenticated data
+    authenticated_data = (f"{key_version}|{encrypted_message}")
+
     # verifies the message before attempting decryption
-    if not verify_hmac(encrypted_message, received_tag, password):
+    if not verify_hmac(authenticated_data, received_tag, password, key_version):
         raise ValueError(
             "message authentication failed: "
             "incorrect password or modified message"
         )
 
     # decrypts the message only after authentication succeeds
-    plaintext = decrypt_by_mode(
-        encrypted_message,
-        password,
-        mode,
-    )
+    plaintext = decrypt_by_mode(encrypted_message, password,mode, key_version)
 
-    return plaintext, encrypted_message
+    return (plaintext, encrypted_message, key_version)
